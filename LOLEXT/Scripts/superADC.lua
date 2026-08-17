@@ -1116,6 +1116,16 @@ function Jinx:Init(menu)
 		menu.R:MenuElement({id = "fog", name = "Finish a target lost in the fog", value = true})
 		menu.R:MenuElement({id = "fogtempo", name = "  until gone for", value = 2000, min = 500, max = 4000, step = 250})
 end
+function Jinx:DanoDoFoguete(alvo)
+	local base = DanoDeHabilidade("R", alvo)
+	if not base then return nil end
+	local faltando = 0
+	pcall(function()
+		faltando = MathMax(0, (alvo.maxHealth or 0) - (alvo.health or 0))
+	end)
+	local FATIA = 0.25
+	return base + faltando * FATIA
+end
 function Jinx:AlcanceFoguete(alvo)
 	local nivel = 1
 	pcall(function() nivel = MathMax(1, myHero:GetSpellData(_Q).level or 1) end)
@@ -1394,8 +1404,17 @@ function Jinx:Ultimate()
 	if not (self.menu.R.abate:Value() and Pronto(_R)) then return end
 	if GetTickCount() - (self._ultimoR or 0) < 1000 then return end
 	for _, e in ipairs(Inimigos(self.menu.R.alcance:Value())) do
-		local dano = DanoDeHabilidade("R", e)
+		local dano = self:DanoDoFoguete(e)
 		local vida = VidaEfetiva(e)
+		if not dano then
+			LogComIntervalo("rsemdano:" .. tostring(e.charName), 5, string.format(
+				"ROCKET NAO ABATE: %s -- sem numero de dano para o R", tostring(e.charName)))
+		elseif vida > dano then
+			LogComIntervalo("rfraco:" .. tostring(e.charName), 5, string.format(
+				"ROCKET NAO ABATE: %s tem %d de vida efetiva e o R tira %d -- falta %d",
+				tostring(e.charName), MathFloor(vida), MathFloor(dano),
+				MathFloor(vida - dano)))
+		end
 		if dano and vida <= dano then
 			local d = Dist(myHero.pos, e.pos)
 			if self:FoguetePraRecall(e, vida, dano, d) then
@@ -1416,13 +1435,23 @@ function Jinx:Ultimate()
 					.. "-- deixa para ele", tostring(e.charName),
 					MathFloor(d), MathFloor(self.W.Range)))
 			elseif self:BloqueadoPorOutro(e, vida) then
+			elseif Pronto(_W) and d <= self.W.Range
+				and (DanoDeHabilidade("W", e) or 0) > 0
+				and LancarPrevisto(self.W.tecla, self.W, e, 2) then
+				self._ultimoW = GetTickCount()
+				Log(string.format(
+					"ZAP ANTES DO FOGUETE: %s com %d de vida a %d unidades | o W tira %d "
+					.. "e esta pronto -- o foguete espera o que sobrar",
+					tostring(e.charName), MathFloor(vida), MathFloor(d),
+					MathFloor(DanoDeHabilidade("W", e) or 0)))
+				return
 			elseif LancarPrevisto(self.R.tecla, self.R, e, 3) then
 				self._ultimoR = GetTickCount()
 				Log(string.format(
-					"ROCKET PARA MATAR: %s com %d de vida efetiva a %d unidades "
-					.. "(alem do Zap, que alcanca %d) | o R tira %d",
-					tostring(e.charName), MathFloor(vida), MathFloor(d),
-					MathFloor(self.W.Range), MathFloor(dano)))
+					"ROCKET PARA MATAR: %s com %d de vida efetiva a %d unidades | o R tira %d "
+					.. "| Zap: alcance %d, pronto=%s",
+					tostring(e.charName), MathFloor(vida), MathFloor(d), MathFloor(dano),
+					MathFloor(self.W.Range), tostring(Pronto(_W))))
 				return
 			end
 		end
