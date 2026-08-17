@@ -1,15 +1,25 @@
 local superADCVersion = "1.0"
+local function MaisNova(a, b)
+	local pa, pb = {}, {}
+	for n in tostring(a):gmatch("%d+") do pa[#pa + 1] = tonumber(n) end
+	for n in tostring(b):gmatch("%d+") do pb[#pb + 1] = tonumber(n) end
+	for i = 1, math.max(#pa, #pb) do
+		local x, y = pa[i] or 0, pb[i] or 0
+		if x ~= y then return x > y end
+	end
+	return false
+end
 do
 	local repo = "https://raw.githubusercontent.com/DuckSong/superADC/main"
 	local ok = pcall(function()
-		local localFile = SCRIPT_PATH .. "superADC.version"
+		local localFile = SCRIPT_PATH .. "superADC.version.remote"
 		DownloadFileAsync(repo .. "/superADC.version", localFile, function()
 			local h = io.open(localFile, "r")
 			if not h then return end
 			local remote = (h:read("*l") or ""):gsub("%s+", "")
 			h:close()
-			if remote ~= "" and remote ~= superADCVersion then
-				DownloadFileAsync(repo .. "/LOLEXT/Scripts/superADC.lua",
+			if remote ~= "" and MaisNova(remote, superADCVersion) then
+			DownloadFileAsync(repo .. "/LOLEXT/Scripts/superADC.lua",
 					SCRIPT_PATH .. "superADC.lua", function()
 						print("superADC updated to " .. remote .. " -- press F6 twice to reload")
 					end)
