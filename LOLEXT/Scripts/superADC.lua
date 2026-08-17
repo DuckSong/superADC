@@ -49,7 +49,7 @@ local function Log(msg)
 		f:write(string.format("[%8.1f] %s\n", Game.Timer(), tostring(msg)))
 		f:close()
 	end)
-	print("superADC: " .. tostring(msg))
+	if tostring(msg):sub(1, 5) == "ERROR" then print("superADC: " .. tostring(msg)) end
 end
 local _ultimaLinha = {}
 local function LogComIntervalo(chave, segundos, msg)
